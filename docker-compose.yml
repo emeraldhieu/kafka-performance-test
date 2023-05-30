@@ -1,0 +1,82 @@
+version: '3.5'
+
+services:
+
+  kafka-0:
+    image: docker.io/bitnami/kafka:3.4
+    ports:
+      - "9092"
+      - "9093"
+    volumes:
+      - "kafka0-data:/bitnami"
+
+      # Used for TLS (doesn't work for now)
+      # - "./tls/kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro"
+      # - "./tls/kafka.keystore.jks:/opt/bitnami/kafka/config/certs/kafka.keystore.jks:ro"
+    environment:
+      # Show debug logs
+      BITNAMI_DEBUG: 1
+      # Plaintext listener means the listener is without authentication and non-encrypted. Used for development only.
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      # A list of Kafka brokers in a quorum
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka-0:9093,1@kafka-1:9093,2@kafka-2:9093"
+      # Broker ID
+      KAFKA_CFG_NODE_ID: 0
+      # Cluster ID is created by "kafka-storage random-uuid"
+      KAFKA_KRAFT_CLUSTER_ID: "qYoMEZXcS_SKP2PzAl8-WA"
+      # Bitnami has configured:
+      # + "listeners" as "PLAINTEXT://:9092,CONTROLLER://:9093".
+      # + "advertised.listeners" as "PLAINTEXT://:9092"
+      # See https://github.com/bitnami/containers/blob/main/bitnami/kafka/README.md#configuration
+      # "listeners" is what the broker will use to create server sockets.
+      # "advertised.listeners" is what clients will use to connect to the brokers.
+
+      # Used for TLS (doesn't work for now)
+      # Got error "sasl.mechanism.inter.broker.protocol must be included in sasl.enabled.mechanisms when SASL is used for inter-broker communication"
+      # KAFKA_CFG_LISTENERS: "SASL_SSL://:9092,CONTROLLER://:9093"
+      # KAFKA_CFG_ADVERTISED_LISTENERS: "SASL_SSL://localhost:9092"
+      # KAFKA_CLIENT_USERS: user
+      # KAFKA_CLIENT_PASSWORDS: password
+      # KAFKA_CERTIFICATE_PASSWORD: haveaniceday
+      # KAFKA_TLS_TYPE: JKS
+      # KAFKA_INTER_BROKER_LISTENER_NAME: SASL_SSL
+      # KAFKA_SASL_ENABLED_MECHANISMS: PLAIN,SCRAM-SHA-256,SCRAM-SHA-512
+      # KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN,SCRAM-SHA-256,SCRAM-SHA-512
+
+  kafka-1:
+    image: docker.io/bitnami/kafka:3.4
+    ports:
+      - "9092"
+      - "9093"
+    volumes:
+      - "kafka1-data:/bitnami"
+    environment:
+      BITNAMI_DEBUG: 1
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka-0:9093,1@kafka-1:9093,2@kafka-2:9093"
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_KRAFT_CLUSTER_ID: "qYoMEZXcS_SKP2PzAl8-WA"
+
+  kafka-2:
+    image: docker.io/bitnami/kafka:3.4
+    ports:
+      - "9092"
+      - "9093"
+    volumes:
+      - "kafka2-data:/bitnami"
+    environment:
+      BITNAMI_DEBUG: 1
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka-0:9093,1@kafka-1:9093,2@kafka-2:9093"
+      KAFKA_CFG_NODE_ID: 2
+      KAFKA_KRAFT_CLUSTER_ID: "qYoMEZXcS_SKP2PzAl8-WA"
+
+volumes:
+  kafka0-data:
+  kafka1-data:
+  kafka2-data:
+
+networks:
+  kafka-playground:
+    driver: bridge
+
