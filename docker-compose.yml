@@ -2,7 +2,7 @@ version: '3.5'
 
 services:
 
-  kafka-0:
+  kafka0:
     image: docker.io/bitnami/kafka:3.4
     ports:
       - "9092"
@@ -21,11 +21,12 @@ services:
       # Plaintext listener means the listener is without authentication and non-encrypted. Used for development only.
       ALLOW_PLAINTEXT_LISTENER: "yes"
       # A list of Kafka brokers in a quorum
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka-0:9093,1@kafka-1:9093,2@kafka-2:9093"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka0:9093,1@kafka1:9093,2@kafka2:9093"
       # Broker ID
       KAFKA_CFG_NODE_ID: 0
       # Cluster ID is created by "kafka-storage random-uuid"
       KAFKA_KRAFT_CLUSTER_ID: "qYoMEZXcS_SKP2PzAl8-WA"
+      
       # Bitnami has configured:
       # + "listeners" as "PLAINTEXT://:9092,CONTROLLER://:9093".
       # + "advertised.listeners" as "PLAINTEXT://:9092"
@@ -45,7 +46,11 @@ services:
       # KAFKA_SASL_ENABLED_MECHANISMS: PLAIN,SCRAM-SHA-256,SCRAM-SHA-512
       # KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN,SCRAM-SHA-256,SCRAM-SHA-512
 
-  kafka-1:
+      KAFKA_CFG_DELETE_RETENTION_MS: 3000
+      KAFKA_CFG_LOG_CLEANUP_POLICY: "compact"
+      KAFKA_CFG_LOG_CLEANER_MAX_COMPACTION_LAG_MS: 5000
+
+  kafka1:
     image: docker.io/bitnami/kafka:3.4
     ports:
       - "9092"
@@ -57,11 +62,15 @@ services:
     environment:
       BITNAMI_DEBUG: 1
       ALLOW_PLAINTEXT_LISTENER: "yes"
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka-0:9093,1@kafka-1:9093,2@kafka-2:9093"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka0:9093,1@kafka1:9093,2@kafka2:9093"
       KAFKA_CFG_NODE_ID: 1
       KAFKA_KRAFT_CLUSTER_ID: "qYoMEZXcS_SKP2PzAl8-WA"
+      
+      KAFKA_CFG_DELETE_RETENTION_MS: 3000
+      KAFKA_CFG_LOG_CLEANUP_POLICY: "compact"
+      KAFKA_CFG_LOG_CLEANER_MAX_COMPACTION_LAG_MS: 5000
 
-  kafka-2:
+  kafka2:
     image: docker.io/bitnami/kafka:3.4
     ports:
       - "9092"
@@ -73,26 +82,78 @@ services:
     environment:
       BITNAMI_DEBUG: 1
       ALLOW_PLAINTEXT_LISTENER: "yes"
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka-0:9093,1@kafka-1:9093,2@kafka-2:9093"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka0:9093,1@kafka1:9093,2@kafka2:9093"
       KAFKA_CFG_NODE_ID: 2
       KAFKA_KRAFT_CLUSTER_ID: "qYoMEZXcS_SKP2PzAl8-WA"
+      
+      KAFKA_CFG_DELETE_RETENTION_MS: 3000
+      KAFKA_CFG_LOG_CLEANUP_POLICY: "compact"
+      KAFKA_CFG_LOG_CLEANER_MAX_COMPACTION_LAG_MS: 5000
 
   schema-registry:
     image: confluentinc/cp-schema-registry:7.3.0
-    hostname: schema-registry
     ports:
-      - "8081"
+      - "8081:8081"
     depends_on:
-      - kafka-0
-      - kafka-1
-      - kafka-2
+      - kafka0
+      - kafka1
+      - kafka2
     networks:
       - infra
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "kafka-0:9092"
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "kafka0:9092"
       SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8081"
       SCHEMA_REGISTRY_URL: "http://localhost:8081"
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.0
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka0
+      - kafka1
+      - kafka2
+      - schema-registry
+    networks:
+      - infra
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka0:9092"
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: "http://schema-registry:8081"
+      DYNAMIC_CONFIG_ENABLED: "true"
+
+  kafka-rest:
+    image: confluentinc/cp-kafka-rest:7.4.0
+    ports:
+      - "8082:8082"
+    depends_on:
+      - kafka0
+      - kafka1
+      - kafka2
+      - schema-registry
+    networks:
+      - infra
+    environment:
+      # bootstrap.servers
+      #   A list of Kafka brokers to connect to. For example, PLAINTEXT://hostname:9092,SSL://hostname2:9092. This
+      #   configuration is particularly important when Kafka security is enabled, because Kafka may expose multiple
+      #   endpoints that all will be stored in ZooKeeper, but REST Proxy may need to be configured with just one of
+      #   those endpoints. The client will make use of all servers irrespective of which servers are specified here for
+      #   bootstrapping—this list only impacts the initial hosts used to discover the full set of servers. Since these
+      #   servers are just used for the initial connection to discover the full cluster membership (which may change
+      #   dynamically), this list need not contain the full set of servers (you may want more than one, though, in case
+      #   a server is down).
+      KAFKA_REST_BOOTSTRAP_SERVERS: 'PLAINTEXT://kafka0:9092'
+
+      # listeners
+      #   Comma-separated list of listeners that listen for API requests over either HTTP or HTTPS. If a listener uses
+      #   HTTPS, the appropriate SSL configuration parameters need to be set as well.
+      KAFKA_REST_LISTENERS: 'http://0.0.0.0:8082'
+
+      # schema.registry.url
+      #   The base URL for Schema Registry that should be used by the Avro serializer.
+      KAFKA_REST_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081'
 
 volumes:
   kafka0-data:
