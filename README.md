@@ -15,23 +15,23 @@ The stack spins up a quorum of 3 Kafka brokers using [KRaft](https://developer.c
 
 Run the below commands in different tabs.
 ```sh
-docker logs -f kafka-performance-test-kafka-0-1
-docker logs -f kafka-performance-test-kafka-1-1
-docker logs -f kafka-performance-test-kafka-2-1
+docker logs -f kafka-performance-test-kafka0-1
+docker logs -f kafka-performance-test-kafka1-1
+docker logs -f kafka-performance-test-kafka2-1
 ```
 
 ### 2) Create a topic
 
 Log into a Kafka container
 ```sh
-docker exec -it kafka-performance-test-kafka-0-1 bash
+docker exec -it kafka-performance-test-kafka0-1 bash
 ```
 
 Create a replicated topic
 ```sh
 /opt/bitnami/kafka/bin/kafka-topics.sh --create \
---bootstrap-server localhost:9092 \
---topic mytopic \
+--bootstrap-server kafka0:9092 \
+--topic products \
 --partitions 6 \
 --replication-factor 3
 ```
@@ -39,19 +39,19 @@ Create a replicated topic
 Describe the topic
 ```sh
 /opt/bitnami/kafka/bin/kafka-topics.sh --describe \
---bootstrap-server localhost:9092 \
---topic mytopic
+--bootstrap-server kafka0:9092 \
+--topic products
 ```
 
 The response looks like
 ```sh
-Topic: mytopic	TopicId: TFEOIlc9SKGNdn2GmFYn0g	PartitionCount: 6	ReplicationFactor: 3	Configs: segment.bytes=1073741824
-	Topic: mytopic	Partition: 0	Leader: 0	Replicas: 0,1,2	Isr: 0,1,2
-	Topic: mytopic	Partition: 1	Leader: 1	Replicas: 1,2,0	Isr: 1,2,0
-	Topic: mytopic	Partition: 2	Leader: 2	Replicas: 2,0,1	Isr: 2,0,1
-	Topic: mytopic	Partition: 3	Leader: 1	Replicas: 1,0,2	Isr: 1,0,2
-	Topic: mytopic	Partition: 4	Leader: 0	Replicas: 0,2,1	Isr: 0,2,1
-	Topic: mytopic	Partition: 5	Leader: 2	Replicas: 2,1,0	Isr: 2,1,0
+Topic: products	TopicId: TFEOIlc9SKGNdn2GmFYn0g	PartitionCount: 6	ReplicationFactor: 3	Configs: segment.bytes=1073741824
+	Topic: products	Partition: 0	Leader: 0	Replicas: 0,1,2	Isr: 0,1,2
+	Topic: products	Partition: 1	Leader: 1	Replicas: 1,2,0	Isr: 1,2,0
+	Topic: products	Partition: 2	Leader: 2	Replicas: 2,0,1	Isr: 2,0,1
+	Topic: products	Partition: 3	Leader: 1	Replicas: 1,0,2	Isr: 1,0,2
+	Topic: products	Partition: 4	Leader: 0	Replicas: 0,2,1	Isr: 0,2,1
+	Topic: products	Partition: 5	Leader: 2	Replicas: 2,1,0	Isr: 2,1,0
 ```
 
 ### 3) Performance-test producers
@@ -59,11 +59,11 @@ Topic: mytopic	TopicId: TFEOIlc9SKGNdn2GmFYn0g	PartitionCount: 6	ReplicationFact
 Produce messages (non-TLS; plaintext)
 ```sh
 /opt/bitnami/kafka/bin/kafka-producer-perf-test.sh \
---topic mytopic \
+--topic products \
 --throughput -1 \
 --num-records 100000 \
 --record-size 1024 \
---producer-props acks=all bootstrap.servers=kafka-0:9092
+--producer-props acks=all bootstrap.servers=kafka0:9092
 ```
 
 Response
@@ -79,8 +79,8 @@ Response
 Consume messages
 ```sh
 /opt/bitnami/kafka/bin/kafka-consumer-perf-test.sh \
---bootstrap-server kafka-0:9092 \
---topic mytopic \
+--bootstrap-server kafka0:9092 \
+--topic products \
 --group mygroup \
 --messages 100000 \
 --fetch-size 1024
@@ -100,7 +100,7 @@ Create a topic based on a scenario, then run producer and consumer performance t
 
 ```sh
 /opt/bitnami/kafka/bin/kafka-topics.sh --create \
---bootstrap-server localhost:9092 \
+--bootstrap-server kafka0:9092 \
 --topic test1
 ```
 
@@ -108,7 +108,7 @@ Create a topic based on a scenario, then run producer and consumer performance t
 
 ```sh
 /opt/bitnami/kafka/bin/kafka-topics.sh --create \
---bootstrap-server localhost:9092 \
+--bootstrap-server kafka0:9092 \
 --topic test2 \
 --replication-factor 3
 ```
@@ -117,10 +117,143 @@ Create a topic based on a scenario, then run producer and consumer performance t
 
 ```sh
 /opt/bitnami/kafka/bin/kafka-topics.sh --create \
---bootstrap-server localhost:9092 \
+--bootstrap-server kafka0:9092 \
 --topic test3 \
 --partitions 6 \
 --replication-factor 3
+```
+
+## Kafka Tools
+
+### Kafka REST
+
+Instead of using Kafka CLI, you can use [Kafka REST proxy](https://docs.confluent.io/platform/current/kafka-rest/index.html).
+
+Some examples:
+
+#### List clusters
+```sh
+curl -X GET -H "Accept: application/json" "http://localhost:8082/v3/clusters"
+```
+
+Response
+```json
+{
+    "kind": "KafkaClusterList",
+    "metadata":
+    {
+        "self": "http://localhost:8082/v3/clusters",
+        "next": null
+    },
+    "data":
+    [
+        {
+            "kind": "KafkaCluster",
+            "brokers":
+            {
+                "related": "http://localhost:8082/v3/clusters/qYoMEZXcS_SKP2PzAl8-WA/brokers"
+            }
+        }
+    ]
+}
+```
+
+## Protobuf
+
+### Create schemas
+
+Create Protobuf schema for product key
+```sh
+curl -X POST -H "Content-Type:application/vnd.schemaregistry.v1+json" \
+"http://localhost:8081/subjects/products-key/versions" \
+--data @schemas/productKey.json
+```
+
+Create Protobuf schema for product value
+```sh
+curl -X POST -H "Content-Type:application/vnd.schemaregistry.v1+json" \
+"http://localhost:8081/subjects/products-value/versions" \
+--data @schemas/productValue.json
+```
+
+### Produce records
+
+Produce a record with existing schemas
+```sh
+curl --location 'http://localhost:8082/v3/clusters/qYoMEZXcS_SKP2PzAl8-WA/topics/products/records' \
+--header 'Accept: application/json' \
+--header 'Content-Type: application/json' \
+--data '{
+    "key": {
+        "schema_id": 1,
+        "data": {
+            "id": "2"
+        }
+    },
+    "value": {
+        "schema_id": 2,
+        "data": {
+            "id": "2",
+            "name": "pizza",
+            "price": 42
+        }
+    }
+}'
+```
+
+Produce a record with embeded schema (DOESN'T WORK NOW. NEED CHECKING.)
+```sh
+curl --location 'http://localhost:8082/v3/clusters/qYoMEZXcS_SKP2PzAl8-WA/topics/products/records' \
+--header 'Accept: application/json' \
+--header 'Content-Type: application/json' \
+--data '{
+    "key": {
+        "type": "AVRO",
+        "schema": "{\"type\":\"string\"}",
+        "data": "1"
+    },
+    "value": {
+        "type": "PROTOBUF",
+        "schema": "syntax=\"proto3\"; message Product { string id = 1; string name = 2; double price = 3; }",
+        "data": {
+            "id": "1",
+            "name": "pizza",
+            "price": 42
+        }
+    }
+}'
+```
+
+### Consume records
+
+Create a consumer
+```sh
+curl --location 'http://localhost:8082/consumers/awesome-group' \
+--header 'Content-Type: application/vnd.kafka.protobuf.v2+json' \
+--data '{
+  "name": "awesome-consumer",
+  "format": "protobuf",
+  "auto.offset.reset": "earliest",
+  "auto.commit.enable": "false"
+}'
+```
+
+Subscribe a consumer to a topic
+
+```sh
+curl --location 'http://localhost:8082/consumers/awesome-group/instances/awesome-consumer/subscription' \
+--header 'Content-Type: application/vnd.kafka.protobuf.v2+json' \
+--data '{
+  "topics": [
+    "products"
+  ]
+}'
+```
+
+Consume records. Remember every time the consumer consumes records, its offset moves.
+```sh
+curl --location 'http://localhost:8082/consumers/awesome-group/instances/awesome-consumer/records' \
+--header 'Accept: application/vnd.kafka.protobuf.v2+json'
 ```
 
 ## Useful commands:
@@ -128,24 +261,41 @@ Create a topic based on a scenario, then run producer and consumer performance t
 Produce messages
 ```sh
 /opt/bitnami/kafka/bin/kafka-console-producer.sh \
---bootstrap-server kafka-0:9092 \
---topic mytopic
+--bootstrap-server kafka0:9092 \
+--topic products
 ```
 
 Consume messages
 ```sh
 /opt/bitnami/kafka/bin/kafka-console-consumer.sh \
---bootstrap-server kafka-0:9092 \
---topic mytopic \
+--bootstrap-server kafka0:9092 \
+--topic products \
 --from-beginning
 ```
 
 Purge a topic. After done, reset `retention.ms` to the default value 604800000.
 ```sh
 /opt/bitnami/kafka/bin/kafka-configs.sh \
-  --bootstrap-server kafka-0:9092 \
-  --entity-type topics \
-  --alter \
-  --entity-name mytopic \
-  --add-config retention.ms=1000
+--bootstrap-server kafka0:9092 \
+--entity-type topics \
+--alter \
+--entity-name products \
+--add-config retention.ms=1000
+```
+
+Delete a topic. (Mind stoping the consumers or the topic will be recreated)
+```sh
+/opt/bitnami/kafka/bin/kafka-topics.sh --delete \
+--bootstrap-server kafka0:9092 \
+--topic products
+```
+
+Produce a key-value message
+```sh
+echo "product42:{\"food\": \"pizza\"}" | \
+/opt/bitnami/kafka/bin/kafka-console-producer.sh \
+--bootstrap-server kafka0:9092 \
+--topic products \
+--property "parse.key=true" \
+--property "key.separator=:"
 ```
