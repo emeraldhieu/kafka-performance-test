@@ -20,7 +20,7 @@ docker logs -f kafka-performance-test-kafka1-1
 docker logs -f kafka-performance-test-kafka2-1
 ```
 
-### 2) Create a topic
+### 3) Create a topic
 
 Log into a Kafka container
 ```sh
@@ -54,7 +54,7 @@ Topic: products	TopicId: TFEOIlc9SKGNdn2GmFYn0g	PartitionCount: 6	ReplicationFac
 	Topic: products	Partition: 5	Leader: 2	Replicas: 2,1,0	Isr: 2,1,0
 ```
 
-### 3) Performance-test producers
+### 4) Performance-test producers
 
 Produce messages (non-TLS; plaintext)
 ```sh
@@ -74,7 +74,7 @@ Response
 100000 records sent, 6237.914042 records/sec (6.09 MB/sec), 3480.68 ms avg latency, 8640.00 ms max latency, 2802 ms 50th, 7787 ms 95th, 8368 ms 99th, 8608 ms 99.9th.
 ```
 
-### 3) Performance-test consumers
+### 5) Performance-test consumers
 
 Consume messages
 ```sh
@@ -92,7 +92,7 @@ start.time, end.time, data.consumed.in.MB, MB.sec, data.consumed.in.nMsg, nMsg.s
 2023-06-02 08:52:22:714, 2023-06-02 08:52:29:650, 97.6563, 14.0796, 100000, 14417.5317, 3427, 3509, 27.8302, 28498.1476
 ```
 
-## 4) Topic scenarios
+## 2) Topic scenarios
 
 Create a topic based on a scenario, then run producer and consumer performance tests.
 
@@ -123,7 +123,7 @@ Create a topic based on a scenario, then run producer and consumer performance t
 --replication-factor 3
 ```
 
-## Kafka Tools
+## 3) Kafka Tools
 
 ### Kafka REST
 
@@ -158,7 +158,7 @@ Response
 }
 ```
 
-## Protobuf
+## 4) Protobuf
 
 ### Create schemas
 
