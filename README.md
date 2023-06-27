@@ -113,7 +113,7 @@ Create a topic based on a scenario, then run producer and consumer performance t
 --replication-factor 3
 ```
 
-#### 2) Async, 3x replication
+#### 3) Async, 3x replication
 
 ```sh
 /opt/bitnami/kafka/bin/kafka-topics.sh --create \
